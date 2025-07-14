@@ -11,8 +11,9 @@ class ApiController extends Controller
         $response = Http::withOptions([
             'verify' => false,
         ])->get('https://api.mangadex.org/manga', [
-            'limit' => 15,
+            'limit' => 32,
             'includes[]' => 'cover_art', 
+            
         ]);
 
         $mangas = $response->json();
@@ -20,15 +21,30 @@ class ApiController extends Controller
 
         foreach ($mangas['data'] as &$manga) {
             $manga['cover_url'] = $this->getCoverUrl($manga);
+            $manga['genre'] = $this->getGenres($manga);
         }
 
         return view('home', compact('mangas'));
     }
 
+    public function getGenres($manga){
+        $genres = [];
+
+        foreach($manga['attributes']['tags'] as $tag){
+            if(isset($tag['attributes']['group']) && $tag['attributes']['group'] === 'genre'){
+                $genres[] = $tag['attributes']['name']['en'] ?? '';
+            }
+        }
+
+        return $genres;
+    }
+
+    
+
     public function getCoverUrl($manga) {
         foreach ($manga['relationships'] as $rel) {
             if ($rel['type'] === 'cover_art') {
-                $fileName = $rel['attributes']['fileName'] ?? null;
+                $fileName = $rel['attributes']['fileName'];
                 $mangaId = $manga['id'];
                 if ($fileName) {
                     return "https://uploads.mangadex.org/covers/{$mangaId}/{$fileName}.256.jpg";
